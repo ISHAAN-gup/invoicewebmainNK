@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice - N.K. ATTA CHAKKI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3 {
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+        .btn {
+            padding: 10px 15px;
+            background: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        input {
+            width: 100%;
+            padding: 5px;
+        }
+        .remove-btn {
+            background: red;
+            color: white;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+        }
+        .search-panel {
+            margin-top: 20px;
+            padding: 10px;
+            background: #ddd;
+            border-radius: 5px;
+        }
+        @media print {
+            .btn, input, label, .remove-btn, .search-panel {
+                display: none;
+            }
+            .container {
+                box-shadow: none;
+                border: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>N.K. ATTA CHAKKI</h1>
+        <h2>Invoice</h2>
+        <p><strong>Invoice No:</strong> <span id="invoiceNumber"></span></p>
+        <p><strong>Date & Time:</strong> <span id="invoiceDateTime"></span></p>
+        <p><strong>Bill to:</strong> <input type="text" id="customerName" placeholder="Enter Customer Name"></p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Price (₹)</th>
+                    <th>Quantity</th>
+                    <th>Total (₹)</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="billBody"></tbody>
+        </table>
+        
+        <h3><strong>Grand Total: ₹<span id="totalAmount">0</span></strong></h3>
+        
+        <input type="text" id="itemName" placeholder="Item Name">
+        <input type="number" id="itemPrice" placeholder="Price" min="1">
+        <input type="number" id="itemQuantity" placeholder="Quantity" min="1">
+        <button class="btn" onclick="addItem()">Add Item</button>
+        <button class="btn" onclick="printInvoice()">Print Invoice</button>
+        <button class="btn" onclick="saveBill()">Save Bill</button>
+
+        <div class="search-panel">
+            <input type="text" id="searchBill" placeholder="Search Bill No (e.g., NK-1)">
+            <button class="btn" onclick="searchBill()">Search</button>
+        </div>
+    </div>
+
+    <script>
+        let invoiceCounter = localStorage.getItem('invoiceCounter') ? parseInt(localStorage.getItem('invoiceCounter')) : 1;
+        let bills = JSON.parse(localStorage.getItem('bills')) || {};
+        document.getElementById('invoiceDateTime').innerText = new Date().toLocaleString();
+        document.getElementById('invoiceNumber').innerText = 'NK-' + invoiceCounter;
+        let total = 0;
+
+        function addItem() {
+            let itemName = document.getElementById('itemName').value.trim();
+            let itemPrice = parseFloat(document.getElementById('itemPrice').value);
+            let itemQuantity = parseInt(document.getElementById('itemQuantity').value);
+            
+            if (!itemName || isNaN(itemPrice) || isNaN(itemQuantity)) {
+                alert("Please fill all fields correctly.");
+                return;
+            }
+            
+            let table = document.getElementById('billBody');
+            let row = table.insertRow();
+            row.innerHTML = `
+                <td>${itemName}</td>
+                <td>${itemPrice}</td>
+                <td>${itemQuantity}</td>
+                <td>${itemPrice * itemQuantity}</td>
+                <td><button class="remove-btn" onclick="removeItem(this, ${itemPrice * itemQuantity})">Remove</button></td>
+            `;
+            
+            total += itemPrice * itemQuantity;
+            document.getElementById('totalAmount').innerText = total;
+
+            // Clear input fields
+            document.getElementById('itemName').value = "";
+            document.getElementById('itemPrice').value = "";
+            document.getElementById('itemQuantity').value = "";
+        }
+
+        function removeItem(button, itemTotal) {
+            let row = button.parentElement.parentElement;
+            row.remove();
+            total -= itemTotal;
+            document.getElementById('totalAmount').innerText = total;
+        }
+
+        function saveBill() {
+            if (document.getElementById('billBody').rows.length === 0) {
+                alert("Cannot save an empty bill!");
+                return;
+            }
+            let billNo = document.getElementById('invoiceNumber').innerText;
+            let customerName = document.getElementById('customerName').value || "Unknown Customer";
+            let billData = {
+                customerName: customerName,
+                billContent: document.querySelector('.container').innerHTML
+            };
+            bills[billNo] = billData;
+            localStorage.setItem('bills', JSON.stringify(bills));
+            invoiceCounter++;
+            localStorage.setItem('invoiceCounter', invoiceCounter);
+            alert("Bill Saved Successfully!");
+        }
+
+        function searchBill() {
+            let billNo = document.getElementById('searchBill').value.trim();
+            if (bills[billNo]) {
+                document.getElementById('customerName').value = bills[billNo].customerName;
+                document.getElementById('billBody').innerHTML = new DOMParser()
+                    .parseFromString(bills[billNo].billContent, 'text/html')
+                    .getElementById('billBody').innerHTML;
+                alert("Bill loaded successfully!");
+            } else {
+                alert("Bill not found!");
+            }
+        }
+
+        function printInvoice() {
+            let printContents = document.querySelector('.container').innerHTML;
+            let originalContents = document.body.innerHTML;
+
+            document.body.innerHTML = printContents;
+            window.print();
+            document.body.innerHTML = originalContents;
+            
+            // Restore event listeners
+            location.reload();
+        }
+    </script>
+</body>
+</html>
